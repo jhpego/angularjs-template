@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta charset="UTF-8">
+    <title>Page Title</title>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/1.0.19/angular-ui-router.js"></script>
+    <script type="text/javascript">
+
+        /**** AUXILIAR SCRIPTS (pass angular scope or functions as params) ***************************************************************************************************/
+
+        var doSomething = function (param) {
+            alert("Alerting: " + param)
+        }
+
+
+
+
+
+        /**** MAIN APP MODULE (dependency modules on array)  *******************************************************************************************************************/
+
+        app = angular.module('mainApp', ['ui.router', 'ngDirectives', 'ngServices' ])
+
+        app.config(['$httpProvider', '$stateProvider', '$urlRouterProvider', function ($httpProvider, $stateProvider, $urlRouterProvider) {
+            $httpProvider.defaults.withCredentials = true;  //provides credentials on requests
+            $httpProvider.defaults.headers.get = !$httpProvider.defaults.headers.get ? {} : $httpProvider.defaults.headers.get;
+            $httpProvider.defaults.headers.post = !$httpProvider.defaults.headers.post ? { "Content-Type": "application/json; charset=utf-8" } : !$httpProvider.defaults.headers.post;
+            /* prevents cache issues ? */
+            //$httpProvider.defaults.headers.get['If-Modified-Since'] = 'Mon, 26 Jul 1997 05:00:00 GMT'; //disable IE ajax request caching
+            //$httpProvider.defaults.headers.get['Cache-Control'] = 'no-cache';
+            //$httpProvider.defaults.headers.get['Pragma'] = 'no-cache';
+
+            $urlRouterProvider.otherwise('/home');
+
+            $stateProvider
+
+                // HOME STATES AND NESTED VIEWS ========================================
+                .state('home', {
+                    url: '/home',
+                    templateUrl: 'views/home.html'
+                })
+
+                // ABOUT PAGE AND MULTIPLE NAMED VIEWS =================================
+                .state('about', {
+                    url: '/about',
+                    templateUrl: 'views/about.html'
+                    // we'll get to this in a bit       
+                });
+
+
+        }]);
+
+
+
+
+
+
+        /**** ANGULAR SERVICES  **********************************************************************************************************************************************/
+
+        var ngServices = angular.module('ngServices', []);
+
+        ngServices.service('utils', function ($http) {
+            this.sayHello = function (param1) {
+                return "Hello, World! " + param1;
+            };
+            this.getData = function (url, pData) {
+                return $http.get("data.json");
+            }
+        });
+
+
+
+
+
+        /**** ANGULAR DIRECTIVES  *********************************************************************************************************************************************/
+
+        var ngDirectives = angular.module('ngDirectives', []);
+
+        ngDirectives.directive('shareUrl', function () {
+                return {
+                    controller: function ($scope, $element, $transclude) { }
+                    , scope: { url: '=' }
+                    , restrict: 'E'
+                    , replace: 'true'
+
+                    , template: function (elem, attr) {
+                        return '' +
+                            '<div class="crmShare" title="Copiar o Url de Passageiro">' +
+                            '<span class="icon fa-stack fa-lg">' +
+                            '<i class="fa fa-circle fa-stack-2x"></i>' +
+                            '<i class="fa fa-link fa-stack-1x fa-inverse"></i>' +
+                            '</span>' +
+                            '<input class="inputUrl" ng-model="url" type="text" style ="max-height: 0px; margin: 0px; padding: 0px; opacity: 0; overflow: hidden;"></input>' +
+                            '</div>'
+                    }
+                    , link: function (scope, elem, attr) {
+                        var inputUrl = elem[0].querySelector(".inputUrl");
+
+                        elem.bind("click", function () {
+                            inputUrl.select();
+                            var copyOk = document.execCommand('copy');
+                            if (copyOk) {
+                                alert("Url Copiado");
+                            }
+                        })
+                    }
+                };
+            })
+
+        ngDirectives.filter('to_trusted', ['$sce', function ($sce) {
+                return function (input) {
+                    var html = (typeof input != 'undefined' && input != null && typeof input != 'object') ? input.toString() : "";
+                    return $sce.trustAsHtml(html);
+                }
+        }])
+
+
+
+
+
+        /**** MAIN CONTROLLER (SCOPE)  *******************************************************************************************************************************************/
+
+        app.controller('mainCtrl', function ($scope, $window, utils ) {
+
+            $scope.onbuttonclick = function(msg) {
+                doSomething(msg)
+            };
+
+
+            $scope.samplevar = {
+                name: utils.sayHello("cenas")
+            };
+
+
+            setTimeout(function () {
+                utils.getData("data.json", $scope.samplevar).then(function (response) {
+                    $scope.samplevar = response.data.data;
+                    console.log("received data", response)
+                });
+            }, 3000);
+            
+        });
+
+    </script>
+
+    <link id="fontAwesome" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <style>
+        html { width: 100%; overflow-x: hidden; position: fixed; }
+        .actionsBar { float: right; margin-bottom: 5px; }
+    </style>
+</head>
+
+
+
+
+
+
+
+<!-- HTML ======================================================================================================= -->
+
+<body ng-app="mainApp">
+    <div id="mainApp" ng-controller="mainCtrl">
+
+        <span ng-click="onbuttonclick('BUTTON CLICKED')">{{'SampleVar value is: ' + samplevar.name}}</span>
+        <share-url url="samplevar"></share-url>
+
+        <ul class="nav navbar-nav">
+            <li><a ui-sref="home">Home</a></li>
+            <li><a ui-sref="about">About</a></li>
+        </ul>
+
+        <div ui-view></div>
+
+    </div>
+</body>
+</html>
